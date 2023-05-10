@@ -7,13 +7,9 @@ const Viewer = (props) => {
 	}
 
 	return (
-		<div>
-			<ReactPannellum
-				id="1"
-				sceneId="firstScene"
-				imageSource="https://vppub.blob.core.windows.net/pano/20220418/pano_0140_000289.jpg"
-				config={config}
-			/>
+		<div key={props.imgUrl}>
+			{console.log(props.imgUrl)}
+			<ReactPannellum id="1" sceneId="firstScene" imageSource={props.imgUrl} config={config} />
 		</div>
 	)
 }
