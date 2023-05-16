@@ -18,12 +18,14 @@ import "./App.css"
 function App() {
 	const mapDiv = useRef(null)
 	const [imgUrl, setImgUrl] = useState("")
+	const [objects, setObjects] = useState()
 
 	useEffect(() => {
 		if (mapDiv.current) {
 			const layer = new FeatureLayer({
 				url: "https://zemelapiai.vplanas.lt/arcgis/rest/services/Kelio_zenklai/kz_panoramos/MapServer/0",
 				outFields: ["OBJECTID", "ImageName", "FolderName"],
+				definitionExpression: "SUBSTRING(FolderName, 1, 4) = '2022'",
 			})
 
 			const basemap1 = new Basemap({
@@ -74,7 +76,7 @@ function App() {
 	return (
 		<div className="mapDiv" ref={mapDiv}>
 			<div style={{ position: "fixed", left: 0, bottom: 0, zIndex: 9999 }}>
-				<Viewer imgUrl={imgUrl} />
+				<Viewer imgUrl={imgUrl} objects={objects} setImgUrl={setImgUrl} />
 			</div>
 		</div>
 	)
