@@ -12,6 +12,9 @@ import MapImageLayer from "@arcgis/core/layers/MapImageLayer"
 import Extent from "@arcgis/core/geometry/Extent.js"
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils.js"
 import Viewer from "./Viewer"
+import * as geometryEngine from "@arcgis/core/geometry/geometryEngine.js"
+import Graphic from "@arcgis/core/Graphic.js"
+import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js"
 
 import "./App.css"
 
@@ -58,16 +61,86 @@ function App() {
 					view.goTo(response.extent)
 				})
 
-			view.on("click", (event) => {
-				view.hitTest(event).then((response) => {
-					if (response.results.length > 0) {
-						let graphic = response.results[0].graphic
-						console.log(graphic)
+			const graphicsLayer = new GraphicsLayer()
+			map.add(graphicsLayer)
 
-						setImgUrl(
-							`https://vppub.blob.core.windows.net/pano/${graphic.attributes.FolderName}/${graphic.attributes.ImageName}.jpg`
-						)
-					}
+			view.whenLayerView(layer).then((layerView) => {
+				view.on("click", (event) => {
+					graphicsLayer.removeAll()
+
+					layerView
+						.queryFeatures({
+							geometry: event.mapPoint,
+							distance: 10,
+							units: "meters",
+							returnGeometry: true,
+							outFields: ["*"],
+						})
+						.then((response) => {
+							for (let feature of response.features) {
+								let totalDistance = geometryEngine.distance(event.mapPoint, feature.geometry, "meters")
+								feature.distance = totalDistance
+							}
+							response.features.sort((a, b) => a.distance - b.distance)
+
+							response.features[0].group = "main"
+
+							let mainFolderName = response.features[0].attributes.FolderName
+							let count = 0
+							for (let i = 1; i < response.features.length; i++) {
+								if (response.features[i].attributes.FolderName === mainFolderName) {
+									response.features[i].group = "next"
+									count++
+
+									if (count === 2) {
+										break
+									}
+								}
+							}
+
+							const uniqueFolderNames = new Set()
+							const filteredFeatures = []
+							for (let i = 0; i < response.features.length; i++) {
+								const feature = response.features[i]
+
+								if (
+									!feature.group &&
+									!uniqueFolderNames.has(feature.attributes.FolderName) &&
+									feature.attributes.FolderName !== mainFolderName
+								) {
+									feature.group = "other"
+									filteredFeatures.push(feature)
+									uniqueFolderNames.add(feature.attributes.FolderName)
+								}
+							}
+
+							const mainFeature = response.features.find((feature) => feature.group === "main")
+							const nextFeatures = response.features.filter((feature) => feature.group === "next")
+
+							filteredFeatures.push(mainFeature, ...nextFeatures)
+
+							for (let i = 0; i < filteredFeatures.length; i++) {
+								const feature = filteredFeatures[i]
+
+								const graphic = new Graphic({
+									geometry: feature.geometry,
+									symbol: {
+										type: "simple-marker",
+										color: [226, 119, 40],
+										outline: {
+											color: [255, 255, 255],
+											width: 1,
+										},
+									},
+									attributes: feature.attributes,
+								})
+
+								graphicsLayer.add(graphic)
+							}
+
+							response.features = filteredFeatures
+							console.log(response.features)
+						})
 				})
 			})
 		}
