@@ -11,24 +11,49 @@ import TileInfo from "@arcgis/core/layers/support/TileInfo.js"
 import MapImageLayer from "@arcgis/core/layers/MapImageLayer"
 import Extent from "@arcgis/core/geometry/Extent.js"
 import * as reactiveUtils from "@arcgis/core/core/reactiveUtils.js"
-import Viewer from "./Viewer"
 import * as geometryEngine from "@arcgis/core/geometry/geometryEngine.js"
 import Graphic from "@arcgis/core/Graphic.js"
 import GraphicsLayer from "@arcgis/core/layers/GraphicsLayer.js"
+import { Pannellum, PannellumVideo } from "pannellum-react"
 
 import "./App.css"
 
 function App() {
 	const mapDiv = useRef(null)
 	const [imgUrl, setImgUrl] = useState("")
-	const [objects, setObjects] = useState()
+	const [objects, setObjects] = useState([])
+
+	const config = {
+		autoLoad: true,
+		hotSpotDebug: true,
+		hotSpots: [
+			{
+				pitch: 3,
+				yaw: 40,
+				type: "scene",
+				text: "Art Museum Drive",
+			},
+			{
+				pitch: -9.4,
+				yaw: 222.6,
+				type: "scene",
+				text: "Art Museum Drive",
+			},
+			{
+				pitch: -0.9,
+				yaw: 144.4,
+				type: "scene",
+				text: "North Charles Street",
+			},
+		],
+	}
 
 	useEffect(() => {
 		if (mapDiv.current) {
 			const layer = new FeatureLayer({
 				url: "https://zemelapiai.vplanas.lt/arcgis/rest/services/Kelio_zenklai/kz_panoramos/MapServer/0",
-				outFields: ["OBJECTID", "ImageName", "FolderName"],
-				definitionExpression: "SUBSTRING(FolderName, 1, 4) = '2022'",
+				outFields: ["*"],
+				definitionExpression: "SUBSTRING(FolderName, 1, 4) = '2020'",
 			})
 
 			const basemap1 = new Basemap({
@@ -137,9 +162,12 @@ function App() {
 
 								graphicsLayer.add(graphic)
 							}
-
+							// https://vppub.blob.core.windows.net/pano/20220418/pano_0140_000289.jpg
 							response.features = filteredFeatures
-							console.log(response.features)
+							setObjects(response.features)
+							setImgUrl(
+								`https://vppub.blob.core.windows.net/pano/${filteredFeatures[0].attributes.FolderName}/${filteredFeatures[0].attributes.ImageName}.jpg`
+							)
 						})
 				})
 			})
@@ -149,7 +177,60 @@ function App() {
 	return (
 		<div className="mapDiv" ref={mapDiv}>
 			<div style={{ position: "fixed", left: 0, bottom: 0, zIndex: 9999 }}>
-				<Viewer imgUrl={imgUrl} objects={objects} setImgUrl={setImgUrl} />
+				<div>
+					{console.log(imgUrl)}
+					{objects.length > 0 &&
+						objects.map((obj) => {
+							console.log(obj)
+						})}
+					<Pannellum
+						width="500px"
+						height="350px"
+						image={imgUrl}
+						// pitch={10}
+						// yaw={180}
+						// hfov={110}
+						autoLoad
+						compass
+						onLoad={() => {
+							console.log(imgUrl)
+						}}
+					>
+						{/* <Pannellum.Hotspot
+							type="custom"
+							pitch={-2}
+							yaw={0}
+							text="test"
+							handleClick={(evt, args) => {
+								console.log(imgUrl)
+								setImgUrl(
+									imgUrl
+										? imgUrl.replace(/(\d+)(?=\.jpg$)/, (match) =>
+												String(parseInt(match) - 1).padStart(match.length, "0")
+										  )
+										: ""
+								)
+							}}
+						/>
+
+						<Pannellum.Hotspot
+							type="custom"
+							pitch={-2}
+							yaw={180}
+							text="test"
+							handleClick={(evt, args) => {
+								console.log(imgUrl)
+								setImgUrl(
+									imgUrl
+										? imgUrl.replace(/(\d+)(?=\.jpg$)/, (match) =>
+												String(parseInt(match) + 1).padStart(match.length, "0")
+										  )
+										: ""
+								)
+							}}
+						/> */}
+					</Pannellum>
+				</div>
 			</div>
 		</div>
 	)
