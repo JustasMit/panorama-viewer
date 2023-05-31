@@ -22,31 +22,7 @@ function App() {
 	const mapDiv = useRef(null)
 	const [imgUrl, setImgUrl] = useState("")
 	const [objects, setObjects] = useState([])
-
-	const config = {
-		autoLoad: true,
-		hotSpotDebug: true,
-		hotSpots: [
-			{
-				pitch: 3,
-				yaw: 40,
-				type: "scene",
-				text: "Art Museum Drive",
-			},
-			{
-				pitch: -9.4,
-				yaw: 222.6,
-				type: "scene",
-				text: "Art Museum Drive",
-			},
-			{
-				pitch: -0.9,
-				yaw: 144.4,
-				type: "scene",
-				text: "North Charles Street",
-			},
-		],
-	}
+	const [hotspots, setHotspots] = useState([])
 
 	useEffect(() => {
 		if (mapDiv.current) {
@@ -168,6 +144,74 @@ function App() {
 							setImgUrl(
 								`https://vppub.blob.core.windows.net/pano/${filteredFeatures[0].attributes.FolderName}/${filteredFeatures[0].attributes.ImageName}.jpg`
 							)
+
+							let x_new_temp = response.features[0].attributes.X_Ori
+							let y_new_temp = response.features[0].attributes.Y_Ori
+							let radius = 5
+							let bearing = 90 - response.features[0].attributes.H_Sensor
+
+							let bearingRads = (bearing * Math.PI) / 180
+
+							let x_new = x_new_temp + radius * Math.cos(bearingRads)
+							let y_new = y_new_temp + radius * Math.sin(bearingRads)
+
+							const graphicTest = new Graphic({
+								geometry: {
+									type: "point",
+									x: x_new,
+									y: y_new,
+									spatialReference: {
+										wkid: 2600,
+									},
+								},
+								symbol: {
+									type: "simple-marker",
+									color: [200, 200, 200],
+									outline: {
+										color: [255, 255, 255],
+										width: 1,
+									},
+								},
+							})
+
+							graphicsLayer.add(graphicTest)
+
+							let x1 = x_new // replace with the x-coordinate of the first point
+							let y1 = y_new // replace with the y-coordinate of the first point
+
+							let x2 = response.features[0].attributes.X_Ori // replace with the x-coordinate of the second point
+							let y2 = response.features[0].attributes.Y_Ori // replace with the y-coordinate of the second point
+
+							let x3 = response.features[1].attributes.X_Ori // replace with the x-coordinate of the third point
+							let y3 = response.features[1].attributes.Y_Ori // replace with the y-coordinate of the third point
+
+							// Calculate the vectors between the points
+							let dx1 = x1 - x2
+							let dy1 = y1 - y2
+							let dx2 = x3 - x2
+							let dy2 = y3 - y2
+
+							// Calculate the dot product of the vectors
+							let dotProduct = dx1 * dx2 + dy1 * dy2
+
+							// Calculate the magnitudes of the vectors
+							let magnitude1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+							let magnitude2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+
+							// Calculate the angle between the vectors using the dot product and magnitudes
+							let angle = Math.acos(dotProduct / (magnitude1 * magnitude2))
+
+							// Convert the angle to degrees
+							let angleDegrees = (angle * 180) / Math.PI
+
+							console.log(angleDegrees)
+
+							setHotspots([
+								{
+									angle: angleDegrees,
+									img_url: `https://vppub.blob.core.windows.net/pano/${response.features[1].attributes.FolderName}/${response.features[1].attributes.ImageName}.jpg`,
+								},
+							])
 						})
 				})
 			})
@@ -183,53 +227,25 @@ function App() {
 						objects.map((obj) => {
 							console.log(obj)
 						})}
-					<Pannellum
-						width="500px"
-						height="350px"
-						image={imgUrl}
-						// pitch={10}
-						// yaw={180}
-						// hfov={110}
-						autoLoad
-						compass
-						onLoad={() => {
-							console.log(imgUrl)
-						}}
-					>
-						{/* <Pannellum.Hotspot
-							type="custom"
-							pitch={-2}
-							yaw={0}
-							text="test"
-							handleClick={(evt, args) => {
+					{objects.length > 0 && hotspots.length > 0 && (
+						<Pannellum
+							width="500px"
+							height="350px"
+							image={imgUrl}
+							// pitch={10}
+							// yaw={180}
+							// hfov={110}
+							autoLoad
+							compass
+							onLoad={() => {
 								console.log(imgUrl)
-								setImgUrl(
-									imgUrl
-										? imgUrl.replace(/(\d+)(?=\.jpg$)/, (match) =>
-												String(parseInt(match) - 1).padStart(match.length, "0")
-										  )
-										: ""
-								)
 							}}
-						/>
-
-						<Pannellum.Hotspot
-							type="custom"
-							pitch={-2}
-							yaw={180}
-							text="test"
-							handleClick={(evt, args) => {
-								console.log(imgUrl)
-								setImgUrl(
-									imgUrl
-										? imgUrl.replace(/(\d+)(?=\.jpg$)/, (match) =>
-												String(parseInt(match) + 1).padStart(match.length, "0")
-										  )
-										: ""
-								)
-							}}
-						/> */}
-					</Pannellum>
+						>
+							{hotspots.map((obj) => (
+								<Pannellum.Hotspot type="custom" pitch={-15} yaw={-obj.angle} text="test" />
+							))}
+						</Pannellum>
+					)}
 				</div>
 			</div>
 		</div>
