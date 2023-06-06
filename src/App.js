@@ -127,7 +127,7 @@ function App() {
 									geometry: feature.geometry,
 									symbol: {
 										type: "simple-marker",
-										color: [226, 119, 40],
+										color: feature.group === "main" ? [255, 0, 0] : [0, 255, 0],
 										outline: {
 											color: [255, 255, 255],
 											width: 1,
@@ -155,26 +155,27 @@ function App() {
 							let x_new = x_new_temp + radius * Math.cos(bearingRads)
 							let y_new = y_new_temp + radius * Math.sin(bearingRads)
 
-							const graphicTest = new Graphic({
-								geometry: {
-									type: "point",
-									x: x_new,
-									y: y_new,
-									spatialReference: {
-										wkid: 2600,
-									},
-								},
-								symbol: {
-									type: "simple-marker",
-									color: [200, 200, 200],
-									outline: {
-										color: [255, 255, 255],
-										width: 1,
-									},
-								},
-							})
+							// const graphicTest = new Graphic({
+							// 	geometry: {
+							// 		type: "point",
+							// 		x: x_new,
+							// 		y: y_new,
+							// 		spatialReference: {
+							// 			wkid: 2600,
+							// 		},
+							// 	},
+							// 	symbol: {
+							// 		type: "simple-marker",
+							// 		color: [200, 200, 200],
+							// 		outline: {
+							// 			color: [255, 255, 255],
+							// 			width: 1,
+							// 		},
+							// 	},
+							// })
+							// graphicsLayer.add(graphicTest)
 
-							graphicsLayer.add(graphicTest)
+							let tempHotspots = []
 
 							let x1 = x_new // replace with the x-coordinate of the first point
 							let y1 = y_new // replace with the y-coordinate of the first point
@@ -182,36 +183,47 @@ function App() {
 							let x2 = response.features[0].attributes.X_Ori // replace with the x-coordinate of the second point
 							let y2 = response.features[0].attributes.Y_Ori // replace with the y-coordinate of the second point
 
-							let x3 = response.features[1].attributes.X_Ori // replace with the x-coordinate of the third point
-							let y3 = response.features[1].attributes.Y_Ori // replace with the y-coordinate of the third point
+							for (let feature of response.features) {
+								if (feature.group === "main") {
+									continue
+								}
 
-							// Calculate the vectors between the points
-							let dx1 = x1 - x2
-							let dy1 = y1 - y2
-							let dx2 = x3 - x2
-							let dy2 = y3 - y2
+								let x3 = feature.attributes.X_Ori // replace with the x-coordinate of the third point
+								let y3 = feature.attributes.Y_Ori // replace with the y-coordinate of the third point
 
-							// Calculate the dot product of the vectors
-							let dotProduct = dx1 * dx2 + dy1 * dy2
+								// Calculate the vectors between the points
+								let dx1 = x1 - x2
+								let dy1 = y1 - y2
+								let dx2 = x3 - x2
+								let dy2 = y3 - y2
+								// Calculate the dot product of the vectors
+								let dotProduct = dx1 * dx2 + dy1 * dy2
+								// Calculate the magnitudes of the vectors
+								let magnitude1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
+								let magnitude2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+								// Calculate the angle between the vectors using the dot product and magnitudes
+								let angle = Math.acos(dotProduct / (magnitude1 * magnitude2))
+								// Convert the angle to degrees
+								let angleDegrees = (angle * 180) / Math.PI
 
-							// Calculate the magnitudes of the vectors
-							let magnitude1 = Math.sqrt(dx1 * dx1 + dy1 * dy1)
-							let magnitude2 = Math.sqrt(dx2 * dx2 + dy2 * dy2)
+								// Calculate the cross product between the vectors
+								let crossProduct = dx1 * dy2 - dx2 * dy1
+								// Adjust the angle based on the cross product
+								let adjustedAngle = crossProduct >= 0 ? angleDegrees : 360 - angleDegrees
+								// Add 360 degrees if the angle is less than 0 (negative)
+								if (adjustedAngle < 0) {
+									adjustedAngle += 360
+								}
 
-							// Calculate the angle between the vectors using the dot product and magnitudes
-							let angle = Math.acos(dotProduct / (magnitude1 * magnitude2))
+								console.log(adjustedAngle)
 
-							// Convert the angle to degrees
-							let angleDegrees = (angle * 180) / Math.PI
+								tempHotspots.push({
+									angle: adjustedAngle,
+									img_url: `https://vppub.blob.core.windows.net/pano/${feature.attributes.FolderName}/${feature.attributes.ImageName}.jpg`,
+								})
+							}
 
-							console.log(angleDegrees)
-
-							setHotspots([
-								{
-									angle: angleDegrees,
-									img_url: `https://vppub.blob.core.windows.net/pano/${response.features[1].attributes.FolderName}/${response.features[1].attributes.ImageName}.jpg`,
-								},
-							])
+							setHotspots(tempHotspots)
 						})
 				})
 			})
